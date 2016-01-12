@@ -5,7 +5,7 @@ import cssutils
 from BeautifulSoup import BeautifulSoup
 
 def espn_request(http, url):
-    req = http.request('GET', url)
+    req = http.request('GET', url.encode('utf-8'))
     if req.status != 200:
         sys.exit('ERR: ESPN servers gave bad status %d' % (req.status))
 
@@ -77,7 +77,7 @@ for conf in confs:
                                     }
                               )['href']
         (color, hometowns) = get_players(http, base_url + roster_url)
-        print ('%s has %d players and primary color %s\n' % (name,
+        print (u'%s has %d players and primary color %s\n' % (name,
                len(hometowns), color))
 
         f = open('/tmp/'+name+'.roster', 'w')
