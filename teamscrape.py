@@ -1,5 +1,5 @@
 import sys
-import re
+import json
 import urllib3
 import cssutils
 from BeautifulSoup import BeautifulSoup
@@ -80,11 +80,11 @@ for conf in confs:
         print (u'%s has %d players and primary color %s\n' % (name,
                len(hometowns), color))
 
-        f = open('/tmp/'+name+'.roster', 'w')
-        f.write(color+'\n')
-        for town in hometowns:
-            # Skip unlisted towns
-            if town != u'--':
-                f.write(town+'\n')
-        f.close()
+        print (name)
+        jdict = {'name' : name,
+                 'color': color,
+                 'hometowns': hometowns};
+        with open('rosters/'+name+'.json', 'w') as outfile:
+            json.dump(jdict, outfile)
+            outfile.close()
 
