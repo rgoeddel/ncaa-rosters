@@ -84,7 +84,7 @@ for conf in confs:
         jdict = {'name' : name,
                  'color': color,
                  'hometowns': hometowns};
-        with open('/tmp/'+name+'.json', 'w') as outfile:
+        with open('rosters/'+name+'.json', 'w') as outfile:
             json.dump(jdict, outfile)
             outfile.close()
 
