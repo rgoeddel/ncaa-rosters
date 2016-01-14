@@ -216,7 +216,8 @@ Currently only shows the compisition of their most recent team.</p>
     function updateIndex(rosters) {
         // Make selector tool
         var sel = d3.selectAll('form').selectAll('select');
-        sel.on('click', selectChanged);
+        sel.on('click', selectChanged)
+        sel.on('change', selectChanged);
 
         var opts = sel.selectAll('option')
             .data(rosters);
