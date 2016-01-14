@@ -139,7 +139,7 @@ def main():
                                   )['href']
             (color, hometowns) = get_players(base_url + roster_url)
 
-            name.strip(';')
+            name = name.strip('; ')
             print (u'%s has %d players and primary color %s\n' % (name,
                    len(hometowns), color))
 

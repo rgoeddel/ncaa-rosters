@@ -184,10 +184,10 @@
     };
 
     // Build roster index
-    d3.html('rosters', function(e, d) {
+    d3.html('{{baseurl}}rosters', function(e, d) {
         var lis = d3.select(d).selectAll('li').selectAll('a');
         lis.forEach(function(v) {
-            d3.json('rosters/'+v[0].text, saveRoster);
+            d3.json('{{baseurl}}/rosters/'+v[0].text, saveRoster);
         });
     });
 })();
