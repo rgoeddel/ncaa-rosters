@@ -3,69 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <title>NCAA Rosters</title>
-    <script src="//d3js.org/d3.v3.min.js" charset="utf-8"></script>
 </head>
 
+<style>
+    #container {
+        margin: 10px 10%;
+        border: 2px solid #000;
+        border-radius: 5px;
+        height: 100%;
+        overflow: hidden;
+        background: #F0F8FF;
+    }
+    .hidden {
+        display: none;
+    }
+
+    .graticule {
+        fill: none;
+        stroke: #777;
+        stroke-opacity: .5;
+        stroke-width: .5px;
+    }
+
+    .land {
+        fill: #aaa;
+    }
+
+    .boundary {
+        fill: none;
+        stroke: #fff;
+        stroke-width: .5px;
+    }
+</style>
+
 <body>
-    <script>
-        "use strict"
-        var osmURL = 'http://nominatim.openstreetmap.org/search/';
-        var osmArgs = '?format=json&limit=1';
+    <h1>NCAA Roster Tool</h1>
+    <p>Look at the places where FBS and FCS teams recruit their players from.
+    Currently only shows the compisition of their most recent team.</p>
 
-        d3.json(osmURL.concat('Fair Haven, NJ', osmArgs),
-                function(e, d) {
-                    console.log('lat: '+d[0].lat);
-                    console.log('lon: '+d[0].lon);
-                });
+    <div id="container"></div>
 
-        var cities = {};
-        var rosters = {};
-        var roster_cnt = 0, len;
-
-        function rate_limit
-
-        function process_data(rosters) {
-            console.log(rosters);
-        }
-
-        function load_roster(roster) {
-            return;
-
-            // This is clearly the most evil thing ever without some
-            // rate limiting. Even with small batches of requests, I quickly
-            // got blocked from making further requests. Need (1) some rate
-            // limiting and (2) some caching of some sort. One possibly
-            // useful strategy would be to do this in another language as
-            // part of the pre-processing, and just ignore trying to do
-            // it on the fly. I mean, it's not like the places will move, and
-            // then we're back to loading my own files...
-            d3.json('test-rosters/'.concat(roster), function(e, d) {
-                var entry = {'name':d.name, 'color':d.color};
-                d.hometowns.forEach(function(ht) {
-                    if (ht == '--')
-                        return;
-                    if (cities[ht])
-                        return;
-                    d3.json(osmURL.concat(ht, osmArgs),
-                            function(e, d) {
-                            });
-                });
-                rosters[d.name] = entry;
-                roster_cnt = roster_cnt + 1;
-                if (cnt == len)
-                    process_data(rosters);
-            });
-        }
-
-        d3.html('test-rosters', function(e, d) {
-            var lis = d3.select(d).selectAll('li a');
-            len = lis[0].length;
-            lis[0].forEach(function(r) {
-                loadRoster(r['text']);
-            });
-        });
-
-    </script>
+    <!-- TODO: Move to local copies of these so things will keep working -->
+    <script src="//d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <script src="//d3js.org/topojson.v1.min.js"></script>
+    <script src="./team_map.js"></script>
 <body>
 </body>
 </html>
