@@ -3,23 +3,24 @@
     d3.select(window).on('resize', throttle);
 
     var zoom = d3.behavior.zoom()
-        .scaleExtent([1, 9])
+        .scaleExtent([1, 20])
         .on('zoom', move);
 
     var width = document.getElementById('container').offsetWidth;
     var height = width / 2;
 
-    var topoC, topoL, projection, path, svg, g;
+    var loadCount = 2; // XXX So hacky. Needs to be updated lots. FIX
+    var topoC, topoS, topoP, projection, path, svg, g;
     var graticule = d3.geo.graticule();
 
     // XXX Tooltips later?
 
     setup(width, height);
+
     function setup(width, height) {
         projection = d3.geo.mercator()
-            .scale((width + 1) / 2 / Math.PI)
-            .translate([width / 2, height / 2])
-            .precision(.1);
+            .translate([0, 0])
+            .scale(width / 2 / Math.PI);
 
         path = d3.geo.path()
             .projection(projection);
@@ -27,48 +28,65 @@
         svg = d3.select('#container').append('svg')
             .attr('width', width)
             .attr('height', height)
-            .call(zoom)
-            .on('click', click)
             .append('g')
+            .attr('transform', 'translate('+width/2+','+height/2+')')
+            .call(zoom)
 
         g = svg.append('g');
     }
 
     d3.json('geo/world-50m.json', function(error, world) {
         if (error) throw error;
-        console.log(world);
 
-        var countries = topojson.mesh(world,
-                                      world.objects.countries,
-                                      function (a, b) { return a !== b; });
-        var land = topojson.feature(world,
-                                    world.objects.land);
-        topoC = countries;
-        topoL = land;
+        var countries = topojson.feature(world,
+                                         world.objects.countries);
+        topoC = countries.features;
 
-        draw(topoC, topoL); // Extend to recruits
+        loadCount = loadCount - 1;
+        if (loadCount <= 0)
+            draw(topoC, topoS, topoP);
     });
 
-    function draw(topoC, topoL) {
-        // Render latlon lines
-        svg.append('path')
-            .datum(graticule)
-            .attr('class', 'graticule')
-            .attr('d', path);
+    d3.json('geo/states.json', function(error, us) {
+        if (error) throw error;
 
-        // Render landmasses
-        svg.insert('path', '.graticule')
-            .datum(topoL)
-            .attr('class', 'land')
-            .attr('d', path);
+        var states = topojson.feature(us, us.objects.states);
+        topoS = states.features;
 
-        // Render world political borders
-        svg.insert('path', '.graticule')
-            .datum(topoC)
-            .attr('class', 'boundary')
-            .attr('d', path);
+        loadCount = loadCount - 1;
+        if (loadCount <= 0)
+            draw(topoC, topoS, topoP);
+    });
 
-        // TODO: Render state/provincial political borders for US/CANADA
+    //d3.json('geo/test-provinces.json', function(error, canada) {
+    //    if (error) throw error;
+
+    //    var provinces = topojson.feature(canada, canada.objects.provinces);
+    //    topoP = provinces.features;
+    //    console.log(topoP);
+
+    //    loadCount = loadCount - 1;
+    //    if (loadCount <= 0)
+    //        draw(topoC, topoS, topoP);
+    //});
+
+    function draw(topoC, topoS, topoP) {
+        // Draw in countries
+        var country = g.selectAll('.country').data(topoC);
+        country.enter().insert('path')
+            .attr('class', 'country')
+            .attr('d', path)
+            .attr('id', function(d,i) { return d.id; })
+            .style('fill', '#aaa')
+            .style('stroke', '#000');
+
+        // Draw in states
+        var state = g.selectAll('.state').data(topoS);
+        state.enter().insert('path')
+            .attr('class', 'state')
+            .attr('d', path)
+            .style('fill', 'none')
+            .style('stroke', '#000');
     }
 
     function redraw() {
@@ -76,22 +94,22 @@
         height = width / 2;
         d3.select('svg').remove();
         setup(width, height);
-        draw(topoC, topoL);
+        draw(topoC, topoS, topoP);
     }
 
     function move() {
         var t = d3.event.translate;
         var s = d3.event.scale;
-        zscale = s;
-        var h = height / 4;
+        var h = height / 3;
 
-        t[0] = Math.min((width / height) * (s - 1),
-                        Math.max(width * (1 - s), t[0]));
-        t[1] = Math.min(h * (s-1) + (h * s),
-                        Math.max(height * (1 - s) - (h * s), t[1]));
+        t[0] = Math.min((width / 2) * (s - 1),
+                        Math.max((width / 2) * (1 - s), t[0]));
+        t[1] = Math.min((height / 2) * (s-1) + (h * s),
+                        Math.max((height / 2) * (1 - s) - (h * s), t[1]));
 
         zoom.translate(t);
-        g.attr('transform', 'translate(' + t + ')scale(' + s + ')');
+        g.style('stroke-width', 1/s)
+            .attr('transform', 'translate(' + t + ')scale(' + s + ')');
     }
 
     // Delay redraws
@@ -101,12 +119,6 @@
         throttleTimer = window.setTimeout(function() {
             redraw();
         }, 200);
-    }
-
-    // Geo translation on mouse click in map
-    function click() {
-        var latlon = projection.invert(d3.mouse(this));
-        console.log(latlon);
     }
 
     // ==================================
