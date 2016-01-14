@@ -25,11 +25,13 @@
         stroke-width: .5px;
     }
 
-    .land {
+    .country {
         fill: #aaa;
+        stroke: #fff;
+        stroke-width: .5px;
     }
 
-    .boundary {
+    .state {
         fill: none;
         stroke: #fff;
         stroke-width: .5px;
@@ -42,6 +44,10 @@
     Currently only shows the compisition of their most recent team.</p>
 
     <div id="container"></div>
+    <form>
+        <select id="teams">
+        </select>
+    </form>
 
     <!-- TODO: Move to local copies of these so things will keep working -->
     <script src="//d3js.org/d3.v3.min.js" charset="utf-8"></script>
