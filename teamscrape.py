@@ -90,7 +90,7 @@ def query_osm(hometown):
     # Query for and return hometown info. Then convert from JSON
     query = (query_url+hometown+query_args).encode('utf-8')
     print (query)
-    req = requests.get(query)
+    req = rate_limit(QUERY_DELAY, requests.get, (query))
     try:
         req.raise_for_status()
     except HTTPError as e:
@@ -154,7 +154,9 @@ def main():
                 if 'PQ' in hometown[-2:]:
                     hometown = hometown[:-2] + 'QC'
 
-                ll = rate_limit(QUERY_DELAY, query_osm, (hometown))
+                # XXX Fix me to rate limit at the query to OSM itself, not in
+                # general...
+                ll = query_osm(hometown)
 
                 # Handle error states
                 if not ll:
