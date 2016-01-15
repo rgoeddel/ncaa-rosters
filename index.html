@@ -33,6 +33,8 @@ Currently only shows the compisition of their most recent team.</p>
     var projection, path, svg, bg, fg, zscale = 1;
     var graticule = d3.geo.graticule();
 
+    var tooltip = d3.select('#container').append('div').attr('class', 'tooltip hidden');
+
     // Start with an empty school
     var rosters = [{'name': '--'}];
 
@@ -127,10 +129,14 @@ Currently only shows the compisition of their most recent team.</p>
             // It would be ideal to have the secondary color of the school,
             // but this wasn't scrapable...
             var roster = drawData['roster'];
+            var color = roster.color;
+            var invColor = colorStringInverse(color);
             var hometowns = [];
             if (roster.name != '--') {
                 for (var key in roster.hometowns) {
-                    hometowns.push(roster.hometowns[key]);
+                    var town = roster.hometowns[key];
+                    town['name'] = key;
+                    hometowns.push(town);
                 }
                 hometowns.sort(hometownCompare);
             }
@@ -138,20 +144,41 @@ Currently only shows the compisition of their most recent team.</p>
             var player = fg.selectAll('.player').data(hometowns);
             player.enter().insert('circle');
 
+            // XXX HOVER
             player
                 .attr('class', 'player')
                 .attr('d', path)
                 .attr('cx', function(d) { return projection([d.lon, d.lat])[0]; })
                 .attr('cy', function(d) { return projection([d.lon, d.lat])[1]; })
                 .attr('r', function(d) { return Math.max(2.5*Math.sqrt(d.count)/zscale,
-                                                         .5*Math.sqrt(d.count));
+                                                         .3*Math.sqrt(d.count));
                                        })
-                .attr('fill', roster.color)
-                .attr('stroke', colorStringInverse(roster.color))
+                .attr('fill', color)
+                .attr('stroke', invColor)
                 .attr('stroke-width', .5/zscale);
 
+
             player.exit().remove();
+
+            // Tooltips
+            var offsetL = document.getElementById('container').offsetLeft+20;
+            var offsetT = document.getElementById('container').offsetTop+10;
+
+            player
+                .on('mousemove', function(d,i) {
+                    var mouse = d3.mouse(svg.node()).map( function(d) { return parseInt(d); });
+
+                    tooltip.classed('hidden', false)
+                        .attr('style', 'left:'+(mouse[0]+offsetL)+'px;'+
+                              'top:'+(mouse[1]+offsetT)+'px;color:'+invColor+
+                              ';background:'+color+';border: 1px solid '+invColor)
+                        .html(d.name + ': ' + d.count);
+                })
+                .on('mouseout', function(d,i) {
+                    tooltip.classed('hidden', true);
+                });
         }
+
     }
 
     function redraw() {
@@ -184,7 +211,7 @@ Currently only shows the compisition of their most recent team.</p>
         d3.selectAll('.player')
             .style('stroke-width', .5/s)
             .attr('r', function(d) { return Math.max(2.5*Math.sqrt(d.count)/s,
-                                                     .5*Math.sqrt(d.count));
+                                                     .3*Math.sqrt(d.count));
                                    });
     }
 
