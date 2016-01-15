@@ -3,6 +3,7 @@
 # It makes use of the Nominatim service provided by OpenStreetMap contributors
 
 import sys
+import getopt
 import time
 import json
 import requests
@@ -10,6 +11,7 @@ import cssutils
 from BeautifulSoup import BeautifulSoup
 
 # This query is rate-limited so we don't piss off OSM
+city_map_path = '/tmp/city_map.json'
 city_map = {}
 QUERY_DELAY = 2.0 # [s]
 last_query_time = time.clock()
@@ -39,6 +41,22 @@ def espn_request(url):
     req.close()
     return raw_html
 
+# Players don't always have text here, so you have to be careful.
+# Handle non-existent hometowns as '--'
+def get_hometown_from_player_page(player_url):
+    print (player_url)
+    player_html = rate_limit(QUERY_DELAY, espn_request, (player_url))
+    player_soup = BeautifulSoup(player_html)
+
+    hometown_item = player_soup.find('ul', {'class' : lambda x: x and
+                                                      'player-metadata' in x
+                                           }
+                                    )
+    hometown = hometown_item.find('li')
+    if not (hometown and 'Hometown' in hometown.text):
+        return '--'
+    return hometown.text[8:]
+
 def get_players(roster_url):
     roster_html = rate_limit(QUERY_DELAY, espn_request, (roster_url))
     team_soup = BeautifulSoup(roster_html)
@@ -56,10 +74,14 @@ def get_players(roster_url):
     table = team_soup.findAll('table', {'class' : 'tablehead'})
     header = team_soup.findAll('tr', {'class' : 'colhead'})
     tds = header[0].findAll('td')
+    hometown_idx = 0
+    name_idx = 0
     idx = 0
     for td in tds:
+        if td.text == u'NAME':
+            name_idx = idx;
         if td.text == u'HOMETOWN':
-            break
+            hometown_idx = idx
         idx = idx + 1
 
     player_rows = table[0].findAll('tr', {'class' : lambda x: x and
@@ -72,7 +94,17 @@ def get_players(roster_url):
     hometowns = []
     for row in player_rows:
         tds = row.findAll('td')
-        hometowns.append(tds[idx].text)
+        hometown = tds[hometown_idx].text;
+        # Hometowns are unlisted when it's just a country of origin. In
+        # that case, try to grab it from their player page.
+        if (hometown == '--'):
+            hometown = get_hometown_from_player_page(tds[name_idx].find('a')['href'])
+            if hometown != '--':
+                hometowns.append(hometown)
+            else:
+                print ('Skipping hometown for player')
+        else:
+            hometowns.append(hometown)
 
     return (color, hometowns)
 
@@ -143,19 +175,11 @@ def main():
             print (u'%s has %d players and primary color %s\n' % (name,
                    len(hometowns), color))
 
-            jdict = {'name' : name, 'color' : color, 'hometowns' : {}}
+            jdict = {'name' : name, 'color' : color, 'license' : osm_license, 'hometowns' : {}}
 
             for hometown in hometowns:
-                # Throw away EPSN's junk '--'
-                if not ',' in hometown:
-                    continue
-
                 # Handle PQ for Province du Quebec. OSM expects QC
-                if 'PQ' in hometown[-2:]:
-                    hometown = hometown[:-2] + 'QC'
-
-                # XXX Fix me to rate limit at the query to OSM itself, not in
-                # general...
+                hometown = hometown.replace('PQ', 'QC')
                 ll = query_osm(hometown)
 
                 # Handle error states
@@ -167,10 +191,10 @@ def main():
                     entry['count'] = entry['count'] + 1
                     jdict['hometowns'][hometown] = entry
                 else:
-                    entry = {'count' : 1, 'license' : osm_license, 'lat' : ll[0], 'lon' : ll[1]}
+                    entry = {'count' : 1, 'lat' : ll[0], 'lon' : ll[1]}
                     jdict['hometowns'][hometown] = entry
 
-            with open('rosters/'+name+'.json', 'w') as outfile:
+            with open('_data/rosters/'+name+'.json', 'w') as outfile:
                 json.dump(jdict, outfile)
                 outfile.close()
 
@@ -179,5 +203,36 @@ def main():
         json.dump(city_map, outfile)
         outfile.close()
 
+def usage():
+    print ('python teamscrape.py [optional-city-database.json]')
+
+def load_city_map(args):
+    f = open(args[0], 'r')
+
+    global city_map_path
+    city_map_path= args[0]
+
+    global city_map
+    city_map = json.loads(f.read())
+
+    f.close()
+
+# Option argument: feed json record of hometown latlons
 if __name__ == "__main__":
+    try:
+        opts, args = getopt.getopt(sys.argv[1:],'h')
+    except getopt.GetoptError as e:
+        print str(e)
+        usage()
+        sys.exit(-1)
+
+    for o, a in opts:
+        if o == '-h':
+            usage()
+            sys.exit()
+
+    if len(args) > 0:
+        load_city_map(args)
+
     main()
+
