@@ -124,28 +124,47 @@ def query_osm(hometown):
     global city_map
     global canada_codes
 
-    query_url = 'http://nominatim.openstreetmap.org/search/'
-    query_args = '?format=json'
+    query_url = 'http://nominatim.openstreetmap.org/search?'
+    query_args = 'format=json'
 
+    city = ''
+    state = ''
+    country = ''
     # Apply country code as necessary
     if ',' in hometown:
+        city = hometown[:hometown.find(',')].strip()
+        state = hometown[hometown.find(',')+1:].strip()
+
         canada = False
         for cn in canada_codes:
             canada |= cn in hometown
         if canada:
-            hometown = hometown + ', Canada'
+            country = 'Canada'
         else:
-            hometown = hometown + ', USA'
+            country = 'USA'
+    else:
+        country = hometown.strip()
+
 
     # Check to see if we have seen this city already. If so,
     # return the cached entry
     if hometown in city_map:
         return city_map[hometown]
 
-    print (hometown)
+    print (city + ', ' + state + ', ' + country)
 
     # Query for and return hometown info. Then convert from JSON
-    query = (query_url+hometown+query_args).encode('utf-8')
+    query = query_url
+    if not (city or state or country):
+        return []
+
+    if city:
+        query = query + 'city=' + city + '&'
+    if state:
+        query = query + 'state=' + state + '&'
+    if country:
+        query = query + 'country=' + country + '&'
+    query = (query + query_args).encode('utf-8')
     print (query)
     req = rate_limit(QUERY_DELAY, requests.get, (query))
     try:
