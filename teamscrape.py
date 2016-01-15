@@ -10,10 +10,20 @@ import requests
 import cssutils
 from BeautifulSoup import BeautifulSoup
 
+# Candian province codes.
+# PQ included because apparently some ESPN worker is Québécois
+# We assume that if something contains a common (',') and a canadian
+# province code, it's in Canada. Otherwise, it's in the USA. Either way,
+# affix the country to the place when querying nominatim to clear up
+# some of the mystifyingly incorrect places
+canada_codes = ['AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE',
+             'QC', 'SK', 'YT', 'PQ'];
+
 # This query is rate-limited so we don't piss off OSM
 city_map_path = '/tmp/city_map.json'
 city_map = {}
 QUERY_DELAY = 2.0 # [s]
+ESPN_DELAY = 1.0 # [s]
 last_query_time = time.clock()
 osm_license = u'Data © OpenStreetMap contributors, ODbL 1.0. http://www.openstreetmap.org/copyright'
 
@@ -45,7 +55,7 @@ def espn_request(url):
 # Handle non-existent hometowns as '--'
 def get_hometown_from_player_page(player_url):
     print (player_url)
-    player_html = rate_limit(QUERY_DELAY, espn_request, (player_url))
+    player_html = rate_limit(ESPN_DELAY, espn_request, (player_url))
     player_soup = BeautifulSoup(player_html)
 
     hometown_item = player_soup.find('ul', {'class' : lambda x: x and
@@ -58,7 +68,7 @@ def get_hometown_from_player_page(player_url):
     return hometown.text[8:]
 
 def get_players(roster_url):
-    roster_html = rate_limit(QUERY_DELAY, espn_request, (roster_url))
+    roster_html = rate_limit(ESPN_DELAY, espn_request, (roster_url))
     team_soup = BeautifulSoup(roster_html)
 
     # Extract team color
@@ -98,7 +108,9 @@ def get_players(roster_url):
         # Hometowns are unlisted when it's just a country of origin. In
         # that case, try to grab it from their player page.
         if (hometown == '--'):
-            hometown = get_hometown_from_player_page(tds[name_idx].find('a')['href'])
+            hometown = rate_limit(ESPN_DELAY,
+                                  get_hometown_from_player_page,
+                                  (tds[name_idx].find('a')['href']))
             if hometown != '--':
                 hometowns.append(hometown)
             else:
@@ -110,14 +122,27 @@ def get_players(roster_url):
 
 def query_osm(hometown):
     global city_map
+    global canada_codes
 
     query_url = 'http://nominatim.openstreetmap.org/search/'
     query_args = '?format=json'
 
-    # First, check to see if we have seen this city already. If so,
+    # Apply country code as necessary
+    if ',' in hometown:
+        canada = False
+        for cn in canada_codes:
+            canada |= cn in hometown
+        if canada:
+            hometown = hometown + ', Canada'
+        else:
+            hometown = hometown + ', USA'
+
+    # Check to see if we have seen this city already. If so,
     # return the cached entry
     if hometown in city_map:
         return city_map[hometown]
+
+    print (hometown)
 
     # Query for and return hometown info. Then convert from JSON
     query = (query_url+hometown+query_args).encode('utf-8')
