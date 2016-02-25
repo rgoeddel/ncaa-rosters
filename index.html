@@ -83,6 +83,23 @@ Currently only shows the compisition of their most recent team.</p>
     //    drawData['provinces'] = provinces.features;
     //    draw(drawData);
     //});
+
+    function primaryColor(roster) {
+        if (roster) {
+            return roster.color[roster.color.length-1];
+        } else {
+            return "#000000";
+        }
+    }
+
+    function secondaryColor(roster) {
+        if (roster.color.length < 2) {
+            return colorStringInverse(primaryColor(roster));
+        } else {
+            return roster.color[roster.color.length-2];
+        }
+    }
+
     function colorStringInverse(colorString) {
         var rgb = d3.rgb(colorString);
         rgb.r = 255 - rgb.r;
@@ -129,8 +146,8 @@ Currently only shows the compisition of their most recent team.</p>
             // It would be ideal to have the secondary color of the school,
             // but this wasn't scrapable...
             var roster = drawData['roster'];
-            var color = roster.color;
-            var invColor = colorStringInverse(color);
+            var color = primaryColor(roster);
+            var invColor = secondaryColor(roster);
             var hometowns = [];
             if (roster.name != '--') {
                 for (var key in roster.hometowns) {
@@ -266,9 +283,10 @@ Currently only shows the compisition of their most recent team.</p>
         draw(drawData);
     };
 
-    // Build roster index
+    // Build roster index. XXX Get rid of this
+    var roster;
     {% for roster in site.data.rosters %}
-        var roster = {{ roster | jsonify }}[1];
+        roster = {{ roster | jsonify }}[1];
         saveRoster(roster);
     {% endfor %}
 

@@ -39,13 +39,13 @@ def rate_limit(min_delay, fn, *args):
 
     return fn(*args)
 
-def espn_request(url):
+def http_request(url, src):
     req = requests.get(url.encode('utf-8'))
     try:
         req.raise_for_status()
     except HTTPError as e:
         print e
-        sys.exit('ERR: ESPN request error')
+        sys.exit('ERR: '+src+' request error')
 
     raw_html = req.text
     req.close()
@@ -68,7 +68,7 @@ def get_hometown_from_player_page(player_url):
     return hometown.text[8:]
 
 def get_players(roster_url):
-    roster_html = rate_limit(ESPN_DELAY, espn_request, (roster_url))
+    roster_html = rate_limit(ESPN_DELAY, http_request, (roster_url, 'ESPN'))
     team_soup = BeautifulSoup(roster_html)
 
     # Extract team color
@@ -184,6 +184,49 @@ def query_osm(hometown):
     city_map[hometown] = (json_data['lat'], json_data['lon'])
     return city_map[hometown]
 
+def get_team_colors(url):
+    colors_html = http_request(url, 'Operation Sports')
+
+    soup = BeautifulSoup(colors_html)
+
+    trs = soup.findAll('tr',
+                       { 'class' : lambda x: x
+                           and 'colhead' not in x.split()
+                       }
+                      )
+
+    school_to_colors = {}
+
+    # This page stores the school AND the name. We'll need to strip out
+    # the name so we're left with just the school, if we want to match
+    # this to the data from ESPN. It will be tough to get this perfect,
+    # and make take a few passes.
+    for tr in trs:
+        # Get the team school+name
+        td = tr.find('td')
+        school_and_name = td.find('h3').text
+
+        # Get the list of colors
+        color_divs = td.findAll('div',
+                                { 'class' : lambda x: x
+                                    and 'team-color-box' in x.split()
+                                }
+                               )
+        school_colors = []
+        for div in color_divs:
+            color = div['style']
+            hash_index = color.find('#')
+            end_index = color.find(';')
+            if hash_index >= 0:
+                color = color[color.index('#'): color.index(';')]
+            else:
+                color = '#000000'
+            school_colors.append(color)
+
+        school_to_colors[school_and_name] = school_colors;
+
+    return school_to_colors
+
 def main():
     global OSM_DELAY
     global osm_license
@@ -192,7 +235,14 @@ def main():
     base_url = 'http://espn.go.com'
     teams_url = base_url + '/college-football/teams'
 
-    teams_html = espn_request(teams_url)
+    # Fetch all NCAA team colors
+    colors_url = 'http://dynasties.operationsports.com/team-colors.php?sport=ncaa'
+    school_to_colors = get_team_colors(colors_url)
+    with open('/tmp/team_colors.json', 'w') as outfile:
+        json.dump(school_to_colors, outfile)
+        outfile.close()
+
+    teams_html = http_request(teams_url, 'ESPN')
 
     # Chuck it into BS
     soup = BeautifulSoup(teams_html)
@@ -219,7 +269,7 @@ def main():
             print (u'%s has %d players and primary color %s\n' % (name,
                    len(hometowns), color))
 
-            jdict = {'name' : name, 'color' : color, 'license' : osm_license, 'hometowns' : {}}
+            jdict = {'name' : name, 'color' : [color], 'license' : osm_license, 'hometowns' : {}}
 
             for hometown in hometowns:
                 # Handle PQ for Province du Quebec. OSM expects QC
