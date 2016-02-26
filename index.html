@@ -2,17 +2,23 @@
 layout: default
 ---
 <div class="header">
-<h1>NCAA Roster Tool</h1>
-<p>Look at the places where FBS and FCS teams recruit their players from.
-Currently only shows the compisition of their most recent team.</p>
+<h1>Where do NCAA Schools Recruit Football Players?</h1>
 </div>
+<div class="content">
+    <div class="intro">
+    <p>Tradionally, college teams tend to recuit close to home. The time are
+    changing, though, and there is increased pressure for top-calibur schools to
+    look outside of state lines for the best players. Check out the current
+    composition of player hometowns for FBS and FCS teams.</p>
+    </div>
 
-<br>
-<form id="ui">
-    <select id="teams">
-    </select>
-</form>
-<div id="container"></div>
+    <br>
+    <form id="ui">
+        <select id="teams">
+        </select>
+    </form>
+    <div id="container"></div>
+</div>
 
 <!-- TODO: Move to local copies of these so things will keep working -->
 <script src="//d3js.org/d3.v3.min.js" charset="utf-8"></script>
@@ -27,7 +33,7 @@ Currently only shows the compisition of their most recent team.</p>
         .on('zoom', move);
 
     var width = document.getElementById('container').offsetWidth;
-    var height = width / 2;
+    var height = 4*width / 7;
 
     var drawData = {};
     var projection, path, svg, bg, fg, zscale = 1;
@@ -85,7 +91,7 @@ Currently only shows the compisition of their most recent team.</p>
     //});
 
     function primaryColor(roster) {
-        if (roster) {
+        if (roster && roster.name != '--') {
             return roster.color[roster.color.length-1];
         } else {
             return "#000000";
@@ -93,7 +99,10 @@ Currently only shows the compisition of their most recent team.</p>
     }
 
     function secondaryColor(roster) {
-        if (roster.color.length < 2) {
+        if (roster && roster.name == '--') {
+            return "#ffffff";
+        }
+        else if (roster.color.length < 2) {
             return colorStringInverse(primaryColor(roster));
         } else {
             return roster.color[roster.color.length-2];
